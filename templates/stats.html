@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+    <h2>Estatísticas agregadas de TLS-RPT</h2>
+
+    {% if labels %}
+        <canvas id="tlsChart"></canvas>
+    {% else %}
+        <p>Ainda não há dados armazenados. Faça upload de relatórios ou use IMAP para gerar estatísticas.</p>
+    {% endif %}
+</section>
+
+{% if labels %}
+<section class="card">
+    <h2>Valores por data</h2>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th>Data (start-datetime)</th>
+                <th>Sucessos</th>
+                <th>Falhas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in range(labels|length) %}
+                <tr>
+                    <td>{{ labels[i] }}</td>
+                    <td>{{ success[i] }}</td>
+                    <td>{{ failure[i] }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
+<a href="{{ url_for('index') }}" class="back-link">Voltar</a>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = {{ labels|tojson }};
+  const successData = {{ success|tojson }};
+  const failureData = {{ failure|tojson }};
+
+  if (labels.length > 0) {
+    const ctx = document.getElementById('tlsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Sucessos',
+            data: successData
+          },
+          {
+            label: 'Falhas',
+            data: failureData
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            ticks: {
+              maxRotation: 45,
+              minRotation: 45
+            }
+          },
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+</script>
+
+{% endblock %}
