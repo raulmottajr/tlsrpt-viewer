@@ -127,4 +127,111 @@ def parse_imap_message(msg):
         if "attachment" not in content_disposition.lower():
             continue
 
-        filename
+        filename = part.get_filename()
+        if not filename:
+            continue
+
+        filename_decoded, encoding = decode_header(filename)[0]
+        filename_decoded = decode_maybe(filename_decoded).lower()
+
+        if not (
+            filename_decoded.endswith(".json")
+            or filename_decoded.endswith(".json.gz")
+            or filename_decoded.endswith(".gz")
+        ):
+            continue
+
+        payload = part.get_payload(decode=True)
+        if not payload:
+            continue
+
+        try:
+            if filename_decoded.endswith(".gz"):
+                payload = gzip.decompress(payload)
+            text = payload.decode("utf-8")
+            data = json.loads(text)
+            reports.append(parse_tlsrpt_json(data))
+        except Exception:
+            continue
+
+    return reports
+
+
+@app.route("/imap", methods=["POST"])
+def imap_view():
+    host = request.form.get("host", "").strip()
+    port = request.form.get("port", "").strip()
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "").strip()
+    mailbox = request.form.get("mailbox", "INBOX").strip() or "INBOX"
+    limit = request.form.get("limit", "").strip()
+
+    if not host or not username or not password:
+        flash("Host, usuário e senha são obrigatórios.", "error")
+        return redirect(url_for("index"))
+
+    try:
+        port = int(port) if port else 993
+        limit = int(limit) if limit else 20
+    except ValueError:
+        flash("Porta e limite devem ser números inteiros.", "error")
+        return redirect(url_for("index"))
+
+    all_reports = []
+    errors = []
+
+    try:
+        imap = imaplib.IMAP4_SSL(host, port)
+        imap.login(username, password)
+        imap.select(mailbox)
+
+        # Busca todas as mensagens; pega as mais recentes primeiro
+        status, data = imap.search(None, "ALL")
+        if status != "OK":
+            raise RuntimeError("Falha ao buscar mensagens.")
+
+        ids = data[0].split()
+        ids = ids[-limit:]  # últimas N mensagens
+
+        for msg_id in reversed(ids):
+            status, msg_data = imap.fetch(msg_id, "(RFC822)")
+            if status != "OK":
+                continue
+
+            raw_email = msg_data[0][1]
+            msg = email.message_from_bytes(raw_email)
+
+            # Metadados básicos do e-mail
+            subject, encoding = decode_header(msg.get("Subject", ""))[0]
+            subject = decode_maybe(subject)
+            from_ = decode_maybe(msg.get("From", ""))
+            date_ = decode_maybe(msg.get("Date", ""))
+
+            reports = parse_imap_message(msg)
+            for r in reports:
+                r["email_subject"] = subject
+                r["email_from"] = from_
+                r["email_date"] = date_
+                all_reports.append(r)
+
+        imap.close()
+        imap.logout()
+
+    except Exception as e:
+        errors.append(str(e))
+
+    return render_template(
+        "imap_results.html",
+        reports=all_reports,
+        errors=errors,
+        host=host,
+        username=username,
+        mailbox=mailbox,
+        limit=limit,
+    )
+
+
+if __name__ == "__main__":
+    # Para rodar localmente: python app.py
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
