@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: tlsrpt-viewer
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -b 0.0.0.0:$PORT app:app"
+    envVars:
+      - key: FLASK_SECRET_KEY
+        value: "mude-isto-em-producao"
+      - key: PYTHONUNBUFFERED
+        value: "1"
