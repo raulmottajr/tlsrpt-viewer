@@ -1,1 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+    <h2>Registrar novo usuário</h2>
+    <form action="{{ url_for('register') }}" method="post" autocomplete="off">
+        <div class="form-row">
+            <label>E-mail</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-row">
+            <label>Senha</label>
+            <input type="password" name="password" required>
+        </div>
+        <div class="form-row">
+            <label>Confirmar senha</label>
+            <input type="password" name="password2" required>
+        </div>
+        <button type="submit">Registrar</button>
+    </form>
+</section>
+
+{% endblock %}
 
