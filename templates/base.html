@@ -7,15 +7,20 @@
 </head>
 <body>
 <header>
-    <h1>TLSRPT Viewer</h1>
-    <p>Visualização de relatórios TLS-RPT (multiusuário)</p>
-    <div class="user-bar">
-        {% if session.user %}
-            <span>Logado como {{ session.user.email }}</span>
-            <a href="{{ url_for('logout') }}">Sair</a>
-        {% else %}
-            <a href="{{ url_for('login') }}">Entrar com Google</a>
-        {% endif %}
+    <div class="header-top">
+        <div>
+            <h1>TLSRPT Viewer</h1>
+            <p>Visualização de relatórios TLS-RPT (multiusuário)</p>
+        </div>
+        <div class="user-bar">
+            {% if session.get('user_id') %}
+                <span>Logado como {{ session.get('user_email') }}</span>
+                <a href="{{ url_for('logout') }}">Sair</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Entrar</a>
+                <a href="{{ url_for('register') }}">Registrar</a>
+            {% endif %}
+        </div>
     </div>
 </header>
 
