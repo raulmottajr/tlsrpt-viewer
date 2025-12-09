@@ -4,57 +4,64 @@
 <section class="card">
     <h2>Resultado do upload</h2>
 
-    <h3>Resumo</h3>
-    <ul>
-        <li><strong>Organization:</strong> {{ report.organization_name or "N/D" }}</li>
-        <li><strong>Contato:</strong> {{ report.contact_info or "N/D" }}</li>
-        <li><strong>Report ID:</strong> {{ report.report_id or "N/D" }}</li>
-        <li><strong>Período:</strong>
-            {% if report.date_range %}
-                {{ report.date_range.start or "?" }} até {{ report.date_range.end or "?" }}
-            {% else %}
-                N/D
+    {% for report in reports %}
+        <div class="card" style="margin-bottom: 15px;">
+            {% if report.filename %}
+                <h3>Arquivo: {{ report.filename }}</h3>
             {% endif %}
-        </li>
-    </ul>
 
-    <h3>Policies</h3>
-    {% if report.policies %}
-        {% for p in report.policies %}
-            <div class="policy-box">
-                <p><strong>Tipo:</strong> {{ p.policy_type or "N/D" }}</p>
-                <p><strong>Domínio:</strong> {{ p.policy_domain or "N/D" }}</p>
-                <p><strong>MX:</strong> {{ p.mx_host or "N/D" }}</p>
-                <p><strong>Sucesso:</strong> {{ p.total_success if p.total_success is not none else "N/D" }}</p>
-                <p><strong>Falha:</strong> {{ p.total_failure if p.total_failure is not none else "N/D" }}</p>
+            <h4>Resumo</h4>
+            <ul>
+                <li><strong>Organization:</strong> {{ report.organization_name or "N/D" }}</li>
+                <li><strong>Contato:</strong> {{ report.contact_info or "N/D" }}</li>
+                <li><strong>Report ID:</strong> {{ report.report_id or "N/D" }}</li>
+                <li><strong>Período:</strong>
+                    {% if report.date_range %}
+                        {{ report.date_range.start or "?" }} até {{ report.date_range.end or "?" }}
+                    {% else %}
+                        N/D
+                    {% endif %}
+                </li>
+            </ul>
 
-                {% if p.failures %}
-                    <details>
-                        <summary>Detalhes de falhas ({{ p.failures|length }})</summary>
-                        <ul>
-                            {% for f in p.failures %}
-                                <li>
-                                    <strong>{{ f.get('result-type') or f.get('result_type') or 'resultado' }}</strong> -
-                                    IP: {{ f["sending-mta-ip"] if "sending-mta-ip" in f else "N/D" }},
-                                    MX: {{ f["receiving-mx-hostname"] if "receiving-mx-hostname" in f else "N/D" }},
-                                    Sessions: {{ f["failed-session-count"] if "failed-session-count" in f else "N/D" }}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </details>
-                {% endif %}
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>Nenhuma policy encontrada.</p>
-    {% endif %}
-</section>
+            <h4>Policies</h4>
+            {% if report.policies %}
+                {% for p in report.policies %}
+                    <div class="policy-box">
+                        <p><strong>Tipo:</strong> {{ p.policy_type or "N/D" }}</p>
+                        <p><strong>Domínio:</strong> {{ p.policy_domain or "N/D" }}</p>
+                        <p><strong>MX:</strong> {{ p.mx_host or "N/D" }}</p>
+                        <p><strong>Sucesso:</strong> {{ p.total_success if p.total_success is not none else "N/D" }}</p>
+                        <p><strong>Falha:</strong> {{ p.total_failure if p.total_failure is not none else "N/D" }}</p>
 
-<section class="card">
-    <h2>JSON bruto</h2>
-    <pre class="json-block">{{ report.raw | tojson(indent=2) }}</pre>
+                        {% if p.failures %}
+                            <details>
+                                <summary>Detalhes de falhas ({{ p.failures|length }})</summary>
+                                <ul>
+                                    {% for f in p.failures %}
+                                        <li>
+                                            <strong>{{ f.get('result-type') or f.get('result_type') or 'resultado' }}</strong> -
+                                            IP: {{ f["sending-mta-ip"] if "sending-mta-ip" in f else "N/D" }},
+                                            MX: {{ f["receiving-mx-hostname"] if "receiving-mx-hostname" in f else "N/D" }},
+                                            Sessions: {{ f["failed-session-count"] if "failed-session-count" in f else "N/D" }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>Nenhuma policy encontrada.</p>
+            {% endif %}
+
+            <h4>JSON bruto</h4>
+            <pre class="json-block">{{ report.raw | tojson(indent=2) }}</pre>
+        </div>
+    {% endfor %}
 </section>
 
 <a href="{{ url_for('index') }}" class="back-link">Voltar</a>
+<a href="{{ url_for('stats') }}" class="back-link">Ver estatísticas</a>
 
 {% endblock %}
