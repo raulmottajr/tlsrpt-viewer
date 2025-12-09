@@ -34,7 +34,7 @@
                         <ul>
                             {% for f in p.failures %}
                                 <li>
-                                    <strong>{{ f.result-type or f["result-type"] if "result-type" in f else "resultado" }}</strong> -
+                                    <strong>{{ f.get('result-type') or f.get('result_type') or 'resultado' }}</strong> -
                                     IP: {{ f["sending-mta-ip"] if "sending-mta-ip" in f else "N/D" }},
                                     MX: {{ f["receiving-mx-hostname"] if "receiving-mx-hostname" in f else "N/D" }},
                                     Sessions: {{ f["failed-session-count"] if "failed-session-count" in f else "N/D" }}
