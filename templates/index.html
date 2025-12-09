@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+    <h2>Upload de relatório TLS-RPT</h2>
+    <p>Envie um arquivo <strong>.json</strong> ou <strong>.json.gz</strong> recebido por e-mail.</p>
+    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+        <input type="file" name="report_file" accept=".json,.gz" required>
+        <button type="submit">Enviar e visualizar</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Buscar relatórios via IMAP</h2>
+    <p>Conecte na caixa de e-mail que recebe os TLS reports.</p>
+    <form action="{{ url_for('imap_view') }}" method="post" autocomplete="off">
+        <div class="form-row">
+            <label>Host IMAP</label>
+            <input type="text" name="host" placeholder="imap.seudominio.com" required>
+        </div>
+        <div class="form-row">
+            <label>Porta</label>
+            <input type="number" name="port" placeholder="993">
+        </div>
+        <div class="form-row">
+            <label>Usuário</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-row">
+            <label>Senha</label>
+            <input type="password" name="password" required>
+        </div>
+        <div class="form-row">
+            <label>Mailbox</label>
+            <input type="text" name="mailbox" placeholder="INBOX">
+        </div>
+        <div class="form-row">
+            <label>Quantidade máxima de mensagens</label>
+            <input type="number" name="limit" placeholder="20">
+        </div>
+        <button type="submit">Conectar e buscar relatórios</button>
+    </form>
+</section>
+
+{% endblock %}
