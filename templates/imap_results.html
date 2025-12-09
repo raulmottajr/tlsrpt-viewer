@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="card">
+    <h2>Relatórios encontrados via IMAP</h2>
+    <p>
+        Host: <strong>{{ host }}</strong> |
+        Usuário: <strong>{{ username }}</strong> |
+        Mailbox: <strong>{{ mailbox }}</strong> |
+        Limite: <strong>{{ limit }}</strong>
+    </p>
+
+    {% if errors %}
+        <div class="flash flash-error">
+            <p><strong>Erros durante a consulta IMAP:</strong></p>
+            <ul>
+                {% for e in errors %}
+                    <li>{{ e }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if reports %}
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Organization</th>
+                    <th>Contato</th>
+                    <th>Período</th>
+                    <th>Sucesso</th>
+                    <th>Falha</th>
+                    <th>E-mail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reports %}
+                    {% set first_policy = r.policies[0] if r.policies else None %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ r.organization_name or "N/D" }}</td>
+                        <td>{{ r.contact_info or "N/D" }}</td>
+                        <td>
+                            {% if r.date_range %}
+                                {{ r.date_range.start or "?" }}<br>até {{ r.date_range.end or "?" }}
+                            {% else %}
+                                N/D
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if first_policy and first_policy.total_success is not none %}
+                                {{ first_policy.total_success }}
+                            {% else %}
+                                N/D
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if first_policy and first_policy.total_failure is not none %}
+                                {{ first_policy.total_failure }}
+                            {% else %}
+                                N/D
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="email-meta">
+                                <div><strong>De:</strong> {{ r.email_from or "N/D" }}</div>
+                                <div><strong>Assunto:</strong> {{ r.email_subject or "N/D" }}</div>
+                                <div><strong>Data:</strong> {{ r.email_date or "N/D" }}</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="json-row">
+                        <td colspan="7">
+                            <details>
+                                <summary>Ver JSON bruto</summary>
+                                <pre class="json-block">{{ r.raw | tojson(indent=2) }}</pre>
+                            </details>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum relatório TLS-RPT encontrado nas mensagens analisadas.</p>
+    {% endif %}
+</section>
+
+<a href="{{ url_for('index') }}" class="back-link">Voltar</a>
+
+{% endblock %}
