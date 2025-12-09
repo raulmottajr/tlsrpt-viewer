@@ -17,61 +17,43 @@ from flask import (
     session,
 )
 
-from authlib.integrations.flask_client import OAuth
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
-# Secret key para assinar sessão
+# Secret key para sessão (em produção, coloque via variável de ambiente)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-me-in-production")
 
-# Cada versão nova do schema você pode trocar o nome do arquivo
+# Arquivo de banco de dados (pode ser sobrescrito por variável de ambiente)
 DB_PATH = os.environ.get("TLSRPT_DB_PATH", "tlsrpt_v2.db")
 
-# --------- OAuth com Google ---------
-oauth = OAuth(app)
-google = oauth.register(
-    name="google",
-    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
-    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
-    access_token_url="https://oauth2.googleapis.com/token",
-    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
-    api_base_url="https://openidconnect.googleapis.com/v1/",
-    client_kwargs={
-        "scope": "openid email profile",
-    },
-)
 
-
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user" not in session:
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
-
-    return wrapper
-
-
-def get_current_user_id():
-    user = session.get("user")
-    if not user:
-        return None
-    # usa o "sub" (ID estável do Google). Se quiser, pode usar email.
-    return user.get("sub") or user.get("email")
-
-
-# --------- Banco de dados ---------
+# ------------------ Banco de dados ------------------
 
 
 def init_db():
-    """Cria a tabela de relatórios se ainda não existir."""
+    """Cria as tabelas de usuários e relatórios se ainda não existirem."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
+
+    # Usuários
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    # Relatórios TLS-RPT vinculados ao usuário
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT,
+            user_id INTEGER NOT NULL,
             source TEXT,
             organization_name TEXT,
             contact_info TEXT,
@@ -82,12 +64,21 @@ def init_db():
             start_datetime TEXT,
             end_datetime TEXT,
             total_success INTEGER,
-            total_failure INTEGER
+            total_failure INTEGER,
+            FOREIGN KEY(user_id) REFERENCES users(id)
         )
         """
     )
+
     conn.commit()
     conn.close()
+
+
+def get_current_user():
+    """Retorna (user_id, email) a partir da sessão, ou (None, None)."""
+    user_id = session.get("user_id")
+    email = session.get("user_email")
+    return user_id, email
 
 
 def store_report(parsed, source="upload"):
@@ -95,7 +86,7 @@ def store_report(parsed, source="upload"):
     Guarda no SQLite um resumo de cada policy do relatório,
     vinculado ao usuário logado.
     """
-    user_id = get_current_user_id()
+    user_id, _ = get_current_user()
     if not user_id or not parsed:
         return
 
@@ -152,7 +143,7 @@ def store_report(parsed, source="upload"):
     conn.close()
 
 
-# --------- Parse TLS-RPT ---------
+# ------------------ Utilidades TLS-RPT ------------------
 
 
 def parse_tlsrpt_json(data):
@@ -210,81 +201,6 @@ def load_report_bytes(file_storage):
     return content
 
 
-# --------- Rotas de autenticação ---------
-
-
-@app.route("/login")
-def login():
-    redirect_uri = url_for("auth_callback", _external=True, _scheme="https")
-    return google.authorize_redirect(redirect_uri)
-
-
-@app.route("/auth/callback")
-def auth_callback():
-    token = google.authorize_access_token()
-    resp = google.get("userinfo", token=token)
-    userinfo = resp.json()
-
-    # Guarda o básico na sessão
-    session["user"] = {
-        "sub": userinfo.get("sub"),
-        "email": userinfo.get("email"),
-        "name": userinfo.get("name"),
-        "picture": userinfo.get("picture"),
-    }
-    flash("Login efetuado com sucesso.", "success")
-    return redirect(url_for("index"))
-
-
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    flash("Sessão encerrada.", "success")
-    return redirect(url_for("index"))
-
-
-# --------- Rotas principais ---------
-
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-
-@app.route("/upload", methods=["POST"])
-@login_required
-def upload():
-    # multi-upload: vários arquivos
-    files = request.files.getlist("report_files")
-    if not files or files[0].filename == "":
-        flash("Selecione pelo menos um arquivo para enviar.", "error")
-        return redirect(url_for("index"))
-
-    parsed_reports = []
-
-    for file in files:
-        if not file.filename:
-            continue
-
-        try:
-            raw_bytes = load_report_bytes(file)
-            text = raw_bytes.decode("utf-8")
-            data = json.loads(text)
-            parsed = parse_tlsrpt_json(data)
-            parsed["filename"] = file.filename
-            parsed_reports.append(parsed)
-
-            # grava no banco
-            store_report(parsed, source="upload")
-        except Exception as e:
-            flash(f"Erro ao processar o arquivo {file.filename}: {e}", "error")
-
-    if not parsed_reports:
-        return redirect(url_for("index"))
-
-    return render_template("upload_results.html", reports=parsed_reports)
-
-
 def decode_maybe(value):
     if isinstance(value, bytes):
         try:
@@ -334,6 +250,140 @@ def parse_imap_message(msg):
             continue
 
     return reports
+
+
+# ------------------ Autenticação simples ------------------
+
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user_id, _ = get_current_user()
+        if not user_id:
+            flash("Faça login para usar esta funcionalidade.", "error")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+        password2 = request.form.get("password2") or ""
+
+        if not email or not password:
+            flash("E-mail e senha são obrigatórios.", "error")
+            return redirect(url_for("register"))
+
+        if password != password2:
+            flash("As senhas não coincidem.", "error")
+            return redirect(url_for("register"))
+
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+        existing = cur.fetchone()
+        if existing:
+            conn.close()
+            flash("Já existe um usuário com este e-mail.", "error")
+            return redirect(url_for("register"))
+
+        password_hash = generate_password_hash(password)
+        cur.execute(
+            "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+            (email, password_hash),
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Usuário criado com sucesso. Faça login.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, password_hash FROM users WHERE email = ?",
+            (email,),
+        )
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            flash("Usuário ou senha inválidos.", "error")
+            return redirect(url_for("login"))
+
+        user_id, password_hash = row
+        if not check_password_hash(password_hash, password):
+            flash("Usuário ou senha inválidos.", "error")
+            return redirect(url_for("login"))
+
+        session["user_id"] = user_id
+        session["user_email"] = email
+        flash("Login efetuado com sucesso.", "success")
+        return redirect(url_for("index"))
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("Sessão encerrada.", "success")
+    return redirect(url_for("index"))
+
+
+# ------------------ Rotas principais ------------------
+
+
+@app.route("/")
+def index():
+    user_id, email = get_current_user()
+    return render_template("index.html", user_email=email)
+
+
+@app.route("/upload", methods=["POST"])
+@login_required
+def upload():
+    # multi-upload: vários arquivos
+    files = request.files.getlist("report_files")
+    if not files or files[0].filename == "":
+        flash("Selecione pelo menos um arquivo para enviar.", "error")
+        return redirect(url_for("index"))
+
+    parsed_reports = []
+
+    for file in files:
+        if not file.filename:
+            continue
+
+        try:
+            raw_bytes = load_report_bytes(file)
+            text = raw_bytes.decode("utf-8")
+            data = json.loads(text)
+            parsed = parse_tlsrpt_json(data)
+            parsed["filename"] = file.filename
+            parsed_reports.append(parsed)
+
+            store_report(parsed, source="upload")
+        except Exception as e:
+            flash(f"Erro ao processar o arquivo {file.filename}: {e}", "error")
+
+    if not parsed_reports:
+        return redirect(url_for("index"))
+
+    return render_template("upload_results.html", reports=parsed_reports)
 
 
 @app.route("/imap", methods=["POST"])
@@ -418,7 +468,7 @@ def stats():
     Estatísticas por usuário: soma sucessos e falhas por data de início
     apenas do usuário logado.
     """
-    user_id = get_current_user_id()
+    user_id, _ = get_current_user()
     if not user_id:
         return redirect(url_for("login"))
 
@@ -448,7 +498,7 @@ def stats():
     return render_template("stats.html", labels=labels, success=success, failure=failure)
 
 
-# garante que a tabela exista
+# Cria o banco na partida
 init_db()
 
 if __name__ == "__main__":
