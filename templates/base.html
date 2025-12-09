@@ -8,7 +8,15 @@
 <body>
 <header>
     <h1>TLSRPT Viewer</h1>
-    <p>Visualização simples de relatórios TLS-RPT (RFC 8460)</p>
+    <p>Visualização de relatórios TLS-RPT (multiusuário)</p>
+    <div class="user-bar">
+        {% if session.user %}
+            <span>Logado como {{ session.user.email }}</span>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Entrar com Google</a>
+        {% endif %}
+    </div>
 </header>
 
 <main>
