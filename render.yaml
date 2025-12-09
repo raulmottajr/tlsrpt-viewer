@@ -10,3 +10,6 @@ services:
         value: "mude-isto-em-producao"
       - key: PYTHONUNBUFFERED
         value: "1"
+      # opcional: se quiser outro caminho/arquivo de banco
+      # - key: TLSRPT_DB_PATH
+      #   value: "/data/tlsrpt.db"
