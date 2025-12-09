@@ -1,18 +1,40 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if not session.get('user_id') %}
 <section class="card">
-    <h2>Upload de relatório TLS-RPT</h2>
-    <p>Envie um arquivo <strong>.json</strong> ou <strong>.json.gz</strong> recebido por e-mail.</p>
+    <h2>Bem-vindo</h2>
+    <p>Para enviar relatórios e ver estatísticas, por favor faça login ou registre-se.</p>
+    <p>
+        <a href="{{ url_for('login') }}" class="back-link">Entrar</a> |
+        <a href="{{ url_for('register') }}" class="back-link">Registrar</a>
+    </p>
+</section>
+{% endif %}
+
+<section class="card">
+    <h2>Upload de relatórios TLS-RPT</h2>
+    <p>Envie um ou mais arquivos <strong>.json</strong> ou <strong>.json.gz</strong> recebidos por e-mail.</p>
+
+    {% if session.get('user_id') %}
     <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
-        <input type="file" name="report_file" accept=".json,.gz" required>
+        <input type="file" name="report_files" accept=".json,.gz" multiple required>
         <button type="submit">Enviar e visualizar</button>
     </form>
+    <p style="margin-top:10px;">
+        Após alguns uploads, você pode ver o resumo em
+        <a href="{{ url_for('stats') }}" class="back-link">Estatísticas agregadas</a>.
+    </p>
+    {% else %}
+    <p><em>Faça login para enviar arquivos.</em></p>
+    {% endif %}
 </section>
 
 <section class="card">
     <h2>Buscar relatórios via IMAP</h2>
     <p>Conecte na caixa de e-mail que recebe os TLS reports.</p>
+
+    {% if session.get('user_id') %}
     <form action="{{ url_for('imap_view') }}" method="post" autocomplete="off">
         <div class="form-row">
             <label>Host IMAP</label>
@@ -40,6 +62,21 @@
         </div>
         <button type="submit">Conectar e buscar relatórios</button>
     </form>
+    {% else %}
+    <p><em>Faça login para buscar relatórios via IMAP.</em></p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>Estatísticas</h2>
+    {% if session.get('user_id') %}
+        <p>
+            Veja o gráfico de sucessos e falhas ao longo do tempo em
+            <a href="{{ url_for('stats') }}" class="back-link">Estatísticas agregadas</a>.
+        </p>
+    {% else %}
+        <p><em>Faça login para ver as estatísticas dos seus relatórios.</em></p>
+    {% endif %}
 </section>
 
 {% endblock %}
