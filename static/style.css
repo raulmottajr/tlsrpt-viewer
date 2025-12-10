@@ -6,16 +6,24 @@ body {
     color: #222;
 }
 
-header {
+/* Header fixo no topo */
+.main-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
     background: #222;
     color: #fff;
-    padding: 16px 20px;
+}
+
+header {
+    /* só para não quebrar nada que use header padrão */
 }
 
 .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 12px 20px 8px 20px;
 }
 
 .user-bar {
@@ -29,6 +37,33 @@ header {
     color: #fff;
     text-decoration: none;
 }
+
+.user-bar a:hover {
+    text-decoration: underline;
+}
+
+/* Menu principal */
+
+.main-nav {
+    display: flex;
+    gap: 16px;
+    padding: 8px 20px 10px 20px;
+    background: #111;
+    border-top: 1px solid #333;
+    border-bottom: 1px solid #333;
+}
+
+.main-nav a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.main-nav a:hover {
+    text-decoration: underline;
+}
+
+/* Conteúdo */
 
 main {
     max-width: 1100px;
@@ -83,6 +118,8 @@ button:hover {
     opacity: 0.9;
 }
 
+/* Mensagens */
+
 .flash-container {
     margin-bottom: 15px;
 }
@@ -104,6 +141,8 @@ button:hover {
     border: 1px solid #8aff9a;
 }
 
+/* Caixas de policy e JSON */
+
 .policy-box {
     border: 1px solid #ddd;
     border-radius: 6px;
@@ -120,6 +159,8 @@ button:hover {
     font-size: 0.8rem;
     overflow-x: auto;
 }
+
+/* Tabelas */
 
 .report-table {
     width: 100%;
@@ -146,12 +187,20 @@ button:hover {
     font-size: 0.8rem;
 }
 
+/* Links de navegação */
+
 .back-link {
     display: inline-block;
     margin-top: 10px;
     text-decoration: none;
     color: #0070f3;
 }
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+/* Rodapé */
 
 footer {
     text-align: center;
