@@ -2,12 +2,16 @@
 {% block content %}
 
 <section class="card">
-    <h2>Estatísticas agregadas de TLS-RPT</h2>
+    <h2>Dashboard de TLS-RPT</h2>
 
     {% if labels %}
         <canvas id="tlsChart"></canvas>
     {% else %}
-        <p>Ainda não há dados armazenados. Faça upload de relatórios ou use IMAP para gerar estatísticas.</p>
+        <p>
+            Ainda não há dados armazenados para a sua conta.
+            Clique em <strong>Carregar relatórios</strong> no menu acima
+            para enviar seus primeiros arquivos TLS-RPT ou buscar via IMAP.
+        </p>
     {% endif %}
 </section>
 
@@ -35,7 +39,7 @@
 </section>
 {% endif %}
 
-<a href="{{ url_for('index') }}" class="back-link">Voltar</a>
+<a href="{{ url_for('index') }}" class="back-link">Carregar relatórios</a>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
