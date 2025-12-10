@@ -332,7 +332,8 @@ def login():
         session["user_id"] = user_id
         session["user_email"] = email
         flash("Login efetuado com sucesso.", "success")
-        return redirect(url_for("index"))
+        # Depois de logar, cai sempre no dashboard (/stats)
+        return redirect(url_for("stats"))
 
     return render_template("login.html")
 
