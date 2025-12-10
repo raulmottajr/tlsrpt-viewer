@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<header>
+<header class="main-header">
     <div class="header-top">
         <div>
             <h1>TLSRPT Viewer</h1>
@@ -22,6 +22,11 @@
             {% endif %}
         </div>
     </div>
+
+    <nav class="main-nav">
+        <a href="{{ url_for('stats') }}">Dashboard</a>
+        <a href="{{ url_for('index') }}">Carregar relatórios</a>
+    </nav>
 </header>
 
 <main>
